@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name_ordinary">CleanYourTV 应用版</string>
+    <string name="network_icon_hint">长按确认键打开应用菜单</string>
+    <string name="wallpaper_button_hint">壁纸，点按随机换一张，长按设置</string>
+    <string name="choose_local_wallpaper">更换背景图片</string>
+    <string name="wallpaper_slideshow">自动切换背景</string>
+    <string name="wallpaper_slideshow_off">关闭</string>
+    <string name="wallpaper_minutes">%d 分钟</string>
+    <string name="wallpaper_order">播放顺序</string>
+    <string name="wallpaper_order_sequential">顺序播放</string>
+    <string name="wallpaper_order_shuffle">随机播放</string>
+    <string name="wallpaper_choice_current">当前</string>
+    <string name="clear_screen">一键清屏</string>
+    <string name="menu_launcher_settings">桌面设置</string>
+    <string name="menu_module_cards">模块卡片</string>
+    <string name="menu_dock_edit">编辑程序坞</string>
+    <string name="menu_reorder">调整应用顺序</string>
+    <string name="idle_clear">自动进入屏保</string>
+    <string name="wallpaper_picker_unavailable">系统没有可用的图片选择器，可通过本地图片导入助手应用</string>
+    <string name="wallpaper_picker_title">选择背景图片</string>
+    <string name="wallpaper_picker_empty">媒体库里还没有图片。把图片放到电视存储或 U 盘后，系统扫描到就会出现在这里。</string>
+    <string name="wallpaper_picker_permission">需要允许读取图片，才能列出电视里已有的图片。</string>
+    <string name="wallpaper_picker_allow">允许读取图片</string>
+    <string name="wallpaper_picker_denied">没有读取图片的权限。在系统设置里允许后，再打开这个页面。</string>
+</resources>
