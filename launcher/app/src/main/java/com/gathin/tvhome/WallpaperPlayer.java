@@ -3,6 +3,7 @@ package com.gathin.tvhome;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.os.Build;
 import android.graphics.BitmapFactory;
 import android.graphics.BitmapRegionDecoder;
 import android.graphics.Canvas;
@@ -315,6 +316,7 @@ final class WallpaperPlayer {
             Bitmap old = current;
             current = bitmap;
             image.setImageBitmap(bitmap);
+            refreshGlass();
             if (old != null && old != bitmap) old.recycle();
             return;
         }
@@ -340,7 +342,10 @@ final class WallpaperPlayer {
     private void finishIncoming(boolean keepNew) {
         if (incoming != null) {
             incoming.animate().cancel();
-            if (keepNew && current != null) image.setImageBitmap(current);
+            if (keepNew && current != null) {
+                image.setImageBitmap(current);
+                refreshGlass();
+            }
             incoming.setImageBitmap(null);
             if (incoming.getParent() == root) root.removeView(incoming);
             incoming = null;
@@ -349,6 +354,19 @@ final class WallpaperPlayer {
             outgoing.recycle();
             outgoing = null;
         }
+    }
+
+    /** Glass on Android 11 samples on demand. Tell every panel the picture changed. */
+    private void refreshGlass() {
+        if (root == null) return;
+        root.post(() -> invalidateTree(root));
+    }
+
+    private static void invalidateTree(View view) {
+        view.invalidate();
+        if (!(view instanceof ViewGroup)) return;
+        ViewGroup group = (ViewGroup) view;
+        for (int i = 0; i < group.getChildCount(); i++) invalidateTree(group.getChildAt(i));
     }
 
     private Bitmap decode(File file) {
@@ -400,12 +418,16 @@ final class WallpaperPlayer {
                 }
                 if (decoded.isMutable()) new Canvas(decoded).drawColor(dimColor);
             }
-            // One copy in GPU memory instead of a software bitmap plus its texture; the decode stays off the UI
-            // thread for rotations, and Home's return no longer uploads 4-8 MB to the GPU.
-            Bitmap gpu = decoded.copy(Bitmap.Config.HARDWARE, false);
-            if (gpu == null) return decoded;
-            decoded.recycle();
-            return gpu;
+            // API 31+ can sample a GPU bitmap. Android 11 draws the glass on a software canvas, and a
+            // HARDWARE bitmap throws there; the library then fills the card with milky white.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                Bitmap gpu = decoded.copy(Bitmap.Config.HARDWARE, false);
+                if (gpu != null) {
+                    decoded.recycle();
+                    return gpu;
+                }
+            }
+            return decoded;
         } catch (Exception | OutOfMemoryError failure) {
             return null;
         }

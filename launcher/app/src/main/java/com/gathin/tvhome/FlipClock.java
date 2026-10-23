@@ -3,28 +3,29 @@ package com.gathin.tvhome;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Outline;
 import android.graphics.Paint;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.text.format.DateFormat;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-
-import com.example.liquidglass.LiquidGlassView;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
 /**
- * Two flip cards, hours and minutes, for the cleared screen. Each card is a
- * {@link LiquidGlassLayout} using the v2.0.11 control-center material. A changing card
- * turns over the hinge; the date stays outside, under the pair.
+ * Two flip cards, hours and minutes, for the cleared screen. Each card draws the library's
+ * lens (refraction, dispersion, rim light) itself, because that shader only runs on API 33
+ * and this TV is Android 11. A changing card turns over the hinge; the date stays outside.
  */
 final class FlipClock extends LinearLayout {
     private static final long HALF_FLIP_MS = 340L;
@@ -33,8 +34,8 @@ final class FlipClock extends LinearLayout {
     /** Wallpaper visible between the two cards. The glass rim is wide enough to hide a thinner slot. */
     private static final float GAP_FRACTION = 0.10f;
 
-    private final LiquidGlassLayout hourCard;
-    private final LiquidGlassLayout minuteCard;
+    private final LensCard hourCard;
+    private final LensCard minuteCard;
     private final DigitFace hourText;
     private final DigitFace minuteText;
     private final View hourSeam;
@@ -116,8 +117,8 @@ final class FlipClock extends LinearLayout {
 
     /** The slot between the cards, with two glass beads laid out as a colon. */
     private final class Colon extends FrameLayout {
-        private final LiquidGlassLayout upper;
-        private final LiquidGlassLayout lower;
+        private final LensCard upper;
+        private final LensCard lower;
 
         Colon(Context context, View backdrop) {
             super(context);
@@ -149,29 +150,15 @@ final class FlipClock extends LinearLayout {
             place(lower, spec, x, y + dot + between, dot);
         }
 
-        private void place(LiquidGlassLayout dot, int spec, int x, int y, int size) {
+        private void place(LensCard dot, int spec, int x, int y, int size) {
             dot.measure(spec, spec);
             dot.layout(x, y, x + size, y + size);
+            // Square with a radius of half the side is a circle.
             dot.setCornerRadius(size / 2f);
-            float bevel = size * 0.22f;
-            dot.setBevelWidth(bevel);
-            dot.setRefractionHeight(bevel * 0.45f);
         }
 
-        private LiquidGlassLayout bead(View backdrop) {
-            LiquidGlassLayout dot = new LiquidGlassLayout(getContext());
-            dot.setBackdropSource(backdrop);
-            dot.setClipToOutline(true);
-            dot.setBlurAmount(0.18f);
-            dot.setEnableChromaticAberration(false);
-            dot.setDispersionStrength(0f);
-            dot.setGlassTint(0x73FFFFFF);
-            dot.setOutlineProvider(new ViewOutlineProvider() {
-                @Override
-                public void getOutline(View view, Outline outline) {
-                    outline.setOval(0, 0, view.getWidth(), view.getHeight());
-                }
-            });
+        private LensCard bead(View backdrop) {
+            LensCard dot = new LensCard(getContext(), backdrop);
             dot.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
             return dot;
         }
@@ -186,17 +173,8 @@ final class FlipClock extends LinearLayout {
         super.onDetachedFromWindow();
     }
 
-    private LiquidGlassLayout card(DigitFace text, View backdrop) {
-        LiquidGlassLayout glass = new LiquidGlassLayout(getContext());
-        glass.setBackdropSource(backdrop);
-        glass.setClipToOutline(true);
-        glass.setOutlineProvider(new ViewOutlineProvider() {
-            @Override
-            public void getOutline(View view, Outline outline) {
-                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(),
-                        ((LiquidGlassView) view).getCornerRadius());
-            }
-        });
+    private LensCard card(DigitFace text, View backdrop) {
+        LensCard glass = new LensCard(getContext(), backdrop);
         glass.setCameraDistance(8000f * density);
         glass.addView(text, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
@@ -224,6 +202,7 @@ final class FlipClock extends LinearLayout {
             Typeface face = UiFont.get(context, R.string.font_body);
             paint.setTypeface(face);
             paint.setFontVariationSettings("'wght' 780");
+            paint.setShadowLayer(density * 5f, 0f, density, 0xCC000000);
             setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         }
 
@@ -254,7 +233,7 @@ final class FlipClock extends LinearLayout {
         }
     }
 
-    private View seam(LiquidGlassLayout glass) {
+    private View seam(ViewGroup glass) {
         View line = new View(getContext());
         line.setBackgroundColor(Color.BLACK);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
@@ -264,7 +243,7 @@ final class FlipClock extends LinearLayout {
         return line;
     }
 
-    private void restyle(LiquidGlassLayout glass, DigitFace text, View line,
+    private void restyle(LensCard glass, DigitFace text, View line,
                           float radius, float cardW, int cardH) {
         glass.setCornerRadius(radius);
         glass.invalidateOutline();
@@ -306,8 +285,8 @@ final class FlipClock extends LinearLayout {
         setContentDescription(spoken(newText));
     }
 
-    /** Half turn to the hinge, swap the digits, then settle. The glass shader stays on the card. */
-    private void turn(LiquidGlassLayout card, DigitFace text, String digits) {
+    /** Half turn to the hinge, swap the digits, then settle. The lens bitmap stays on the card. */
+    private void turn(LensCard card, DigitFace text, String digits) {
         card.animate().cancel();
         card.setRotationX(0f);
         card.animate().rotationX(90f).setDuration(HALF_FLIP_MS)
@@ -344,5 +323,108 @@ final class FlipClock extends LinearLayout {
 
     private static String spoken(String hhmm) {
         return hhmm.substring(0, 2) + ":" + hhmm.substring(2);
+    }
+
+    /**
+     * One flip card. The library's lens shader does not run on Android 11, so the card paints
+     * a bitmap from {@link SoftwareLens} and keeps the digits and the hinge on top of it.
+     */
+    private final class LensCard extends FrameLayout {
+        private final View backdrop;
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        private final RectF dest = new RectF();
+        private float radius;
+        private Bitmap lens;
+        private int token;
+        private int drawnKey;
+
+        LensCard(Context context, View backdrop) {
+            super(context);
+            this.backdrop = backdrop;
+            setWillNotDraw(false);
+            setClipToOutline(true);
+            setOutlineProvider(new ViewOutlineProvider() {
+                @Override
+                public void getOutline(View view, Outline outline) {
+                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
+                }
+            });
+        }
+
+        void setCornerRadius(float radius) {
+            if (this.radius == radius) {
+                invalidateOutline();
+                return;
+            }
+            this.radius = radius;
+            invalidateOutline();
+            drawnKey = 0;
+        }
+
+        @Override
+        protected void dispatchDraw(Canvas canvas) {
+            Bitmap frame = lens;
+            if (frame != null && !frame.isRecycled()) {
+                dest.set(0f, 0f, getWidth(), getHeight());
+                canvas.drawBitmap(frame, null, dest, paint);
+            }
+            requestLens();
+            super.dispatchDraw(canvas);
+        }
+
+        private void requestLens() {
+            if (getWidth() < 2 || getHeight() < 2 || radius <= 0f) return;
+            Bitmap wall = SoftwareLens.wallpaper(backdrop);
+            if (wall == null) return;
+            if (backdrop.getWidth() < 2 || backdrop.getHeight() < 2) return;
+            int[] here = new int[2];
+            int[] there = new int[2];
+            getLocationOnScreen(here);
+            backdrop.getLocationOnScreen(there);
+            int key = here[0] * 31 + here[1] + there[0] * 17 + there[1]
+                    + getWidth() * 13 + getHeight()
+                    + backdrop.getWidth() * 7 + backdrop.getHeight()
+                    + System.identityHashCode(wall)
+                    + Float.floatToIntBits(radius);
+            if (key == drawnKey) return;
+            drawnKey = key;
+            final int mine = ++token;
+            final int[] pixels;
+            try {
+                pixels = SoftwareLens.pixelsOf(wall);
+            } catch (RuntimeException ignored) {
+                drawnKey = 0;
+                return;
+            }
+            final SoftwareLens.Job job = new SoftwareLens.Job();
+            job.pixels = pixels;
+            job.bitmapW = wall.getWidth();
+            job.bitmapH = wall.getHeight();
+            job.viewW = backdrop.getWidth();
+            job.viewH = backdrop.getHeight();
+            job.cardX = here[0] - there[0];
+            job.cardY = here[1] - there[1];
+            job.cardW = getWidth();
+            job.cardH = getHeight();
+            job.radius = radius;
+            job.density = density;
+            new Thread(() -> {
+                Bitmap next = SoftwareLens.render(job);
+                post(() -> {
+                    if (mine != token) {
+                        if (next != null) next.recycle();
+                        return;
+                    }
+                    if (next == null) {
+                        drawnKey = 0;
+                        return;
+                    }
+                    Bitmap previous = lens;
+                    lens = next;
+                    if (previous != null && previous != next) previous.recycle();
+                    invalidate();
+                });
+            }, "lens").start();
+        }
     }
 }

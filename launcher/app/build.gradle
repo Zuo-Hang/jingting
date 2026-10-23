@@ -11,8 +11,8 @@ android {
         applicationId 'local.tv.cleanapps'
         minSdk 26
         targetSdk 34
-        versionCode 54
-        versionName '2.6-ordinary.45'
+        versionCode 58
+        versionName '2.6-ordinary.49'
     }
 
     signingConfigs.debug.storeFile = file('/Users/didi/Documents/Codex/2026-10-20/tcl-github-https-github-com-gathin23/work/launcher-toolchain/android-user/debug.keystore')

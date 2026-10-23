@@ -12,7 +12,9 @@ final class GlassStyle {
     private GlassStyle() {}
 
     static void apply(LiquidGlassView glass) {
-        glass.setEnableDynamicBackground(true);
+        // API 31+ keeps a live sample. Android 11's software glass redraws the whole picture
+        // every frame if this stays on, so it samples when the wallpaper actually changes.
+        glass.setEnableDynamicBackground(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S);
         glass.setEnablePressEffect(false);
         glass.setBlurAmount(0.0625f);
         glass.setSaturation(140f);
