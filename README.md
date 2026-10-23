@@ -1,8 +1,8 @@
-# CleanYourTV 应用版
+# 静厅
 
-这是我们自己用的电视桌面，从 [CleanYourTV](https://github.com/Gathin23/cleanyourtv) 改出来。
+我们自己用的客厅桌面。从 [CleanYourTV](https://github.com/Gathin23/cleanyourtv) 改出来，不再接管系统 Home。
 
-它是一个**普通应用**，包名 `local.tv.cleanapps`，出现在电视的应用列表里。原厂桌面还在，不会抢 Home 键，也不会卸载系统应用。
+它是一个**普通应用**，电视上显示为 **静厅**，包名仍是 `local.tv.cleanapps`（覆盖安装不会丢掉数据）。原厂桌面还在，不会抢 Home 键，也不会卸载系统应用。
 
 当前版本：`2.6-ordinary.45`（versionCode 54）。最低 Android 8（API 26）。
 
@@ -49,7 +49,7 @@ adb connect <电视IP>:5555
 adb -s <电视IP>:5555 install -r launcher/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-装完在应用列表里打开 **CleanYourTV 应用版**。用完后关掉网络调试、撤销授权，不要把 ADB 钥匙和电视 IP 写进仓库。
+装完在应用列表里打开 **静厅**。用完后关掉网络调试、撤销授权，不要把 ADB 钥匙和电视 IP 写进仓库。
 
 ## 日常用法
 

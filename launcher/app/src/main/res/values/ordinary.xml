@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name_ordinary">CleanYourTV 应用版</string>
+    <string name="app_name_ordinary">静厅</string>
     <string name="network_icon_hint">长按确认键打开应用菜单</string>
     <string name="wallpaper_button_hint">壁纸，点按随机换一张，长按设置</string>
     <string name="choose_local_wallpaper">更换背景图片</string>
