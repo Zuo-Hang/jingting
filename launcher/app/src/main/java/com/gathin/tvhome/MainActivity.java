@@ -363,7 +363,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // signal level, so only it needs this minute's binder calls (about 7 ms on the UI thread).
             if (festive) updateWifiLabel();
             sky.update();
-            if (!screenCleared) wallpaperPlayer.update();
+            // Home follows the slideshow setting. The cleared screen keeps changing pictures either way:
+            // the chosen interval, or every 2 minutes when automatic switching is off.
+            if (screenCleared) {
+                wallpaperPlayer.updateCleared(LocalSlideshow.pictures(MainActivity.this), 2 * MINUTE_MS,
+                        LocalSlideshow.order(getSharedPreferences(LocalSlideshow.PREFS, MODE_PRIVATE)));
+            } else {
+                wallpaperPlayer.update();
+            }
             handler.postDelayed(this, MINUTE_MS);
         }
     };
@@ -3283,15 +3290,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     /**
-     * Puts the dock, titles and buttons back after a key or a tap. The wallpaper ImageView is left
-     * alone: same bitmap, no fade, no next picture.
+     * Puts the dock, titles and buttons back after a key or a tap. The picture on screen stays;
+     * the slideshow keeps the interval it was already on.
      */
     private void restoreClearedHome() {
         if (!screenCleared) return;
         screenCleared = false;
         if (getIntent() != null) getIntent().removeExtra("clear");
-        wallpaperPlayer.hold(false);
-        wallpaperPlayer.keepShowing();
         greeting.setVisibility(greetingVis);
         findViewById(R.id.topButtons).setVisibility(topButtonsVis);
         findViewById(R.id.stats).setVisibility(statsVis);
@@ -3331,15 +3336,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /**
      * Hides the dock, titles and buttons. A split-flap clock sits in the middle with the date under
-     * it. The wallpaper already on Home stays: rotation is held so neither the clear nor the return
-     * can pick the next picture.
+     * it. The picture already on Home stays, and the slideshow keeps rotating on its interval.
      */
     private void clearScreen() {
         if (screenCleared) return;
         screenCleared = true;
         root.removeCallbacks(idleClear);
-        wallpaperPlayer.keepShowing();
-        wallpaperPlayer.hold(true);
         greetingVis = greeting.getVisibility();
         topButtonsVis = findViewById(R.id.topButtons).getVisibility();
         statsVis = findViewById(R.id.stats).getVisibility();

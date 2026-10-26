@@ -58,8 +58,6 @@ final class WallpaperPlayer {
     private boolean active;
     private boolean closed;
     private boolean loading;
-    /** Clear-screen hold: the picture on screen stays put until Home is back. */
-    private boolean held;
     private String displayed = "";
     /** wallpaper_captions: the shown picture's name from wallpapers/captions.txt; null when off or there are none. */
     private final TextView caption;
@@ -156,20 +154,8 @@ final class WallpaperPlayer {
         decoder.shutdownNow();
     }
 
-    /** Stops rotation so a clear (or the return from it) cannot pick the next picture. */
-    void hold(boolean hold) {
-        held = hold;
-    }
-
-    /** Marks the current picture as just shown, so a due rotation does not fire on the next tick. */
-    void keepShowing() {
-        if (displayed.isEmpty()) return;
-        preferences.edit().putString("image", displayed)
-                .putLong("changed", System.currentTimeMillis()).apply();
-    }
-
     void update() {
-        if (held || !active || closed || loading || files.isEmpty()) return;
+        if (!active || closed || loading || files.isEmpty()) return;
         String previous = preferences.getString("image", "");
         File selected = WallpaperRotation.find(files, previous);
         long changed = preferences.getLong("changed", 0);
@@ -177,7 +163,38 @@ final class WallpaperPlayer {
             selected = WallpaperRotation.pick(files, previous, order, random);
         }
         if (selected == null || selected.getName().equals(displayed)) return;
-        File next = selected;
+        beginShow(selected, previous);
+    }
+
+    /**
+     * Rotation while the screen is cleared. The configured slideshow interval wins. When that
+     * setting is off, the cleared screen still advances through {@code pool} on
+     * {@code fallbackInterval}, instead of staying on the one picture Home had open.
+     */
+    void updateCleared(List<File> pool, long fallbackInterval, String poolOrder) {
+        if (!active || closed || loading) return;
+        List<File> images = new ArrayList<>();
+        if (pool != null) {
+            for (File file : pool) {
+                if (file != null && file.isFile() && file.length() > 0 && !images.contains(file)) images.add(file);
+            }
+        }
+        if (images.size() < 2) {
+            update();
+            return;
+        }
+        long every = interval > 0 ? interval : fallbackInterval;
+        String previous = displayed.isEmpty() ? preferences.getString("image", "") : displayed;
+        long changed = preferences.getLong("changed", 0);
+        if (!WallpaperRotation.due(changed, System.currentTimeMillis(), every)) return;
+        String useOrder = WallpaperRotation.validOrder(poolOrder) ? poolOrder : order;
+        File next = WallpaperRotation.pick(images, previous, useOrder, random);
+        if (next == null || next.getName().equals(previous)) return;
+        if (WallpaperRotation.find(files, next.getName()) == null) files.add(next);
+        beginShow(next, previous);
+    }
+
+    private void beginShow(File next, String previous) {
         loading = true;
         decoder.execute(() -> {
             Bitmap bitmap = decode(next);
@@ -196,7 +213,7 @@ final class WallpaperPlayer {
                 show(bitmap, fadeChanges);
                 displayed = next.getName();
                 showCaption(true);
-                if (!displayed.equals(previous) || changed == 0) {
+                if (!displayed.equals(previous) || preferences.getLong("changed", 0) == 0) {
                     preferences.edit().putString("image", displayed)
                             .putLong("changed", System.currentTimeMillis()).apply();
                 }
